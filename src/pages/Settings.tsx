@@ -8,7 +8,14 @@ const Settings = () => {
     { id: 'attendance', label: 'Chấm công', icon: 'schedule' },
     { id: 'leave', label: 'Nghỉ phép', icon: 'event_busy' },
     { id: 'okrs', label: 'OKRs', icon: 'target' },
+    { id: 'niko', label: 'Niko & Thưởng', icon: 'stars' },
     { id: 'account', label: 'Tài khoản', icon: 'person' },
+  ];
+
+  const nikoSettings = [
+    { label: 'Số sao khen tặng tối đa / tháng', value: '500', key: 'niko.max_stars_per_month' },
+    { label: 'Giá trị đổi 1 sao (VNĐ)', value: '1.000', key: 'niko.star_value' },
+    { label: 'Thông báo khen tặng toàn công ty', value: 'Bật', key: 'niko.enable_global_notif' },
   ];
 
   const payrollSettings = [
@@ -46,7 +53,7 @@ const Settings = () => {
       </div>
 
       <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-2xl shadow-gray-200/50 p-6 space-y-4">
-        {payrollSettings.map((item, idx) => (
+        {(activeTab === 'payroll' ? payrollSettings : activeTab === 'niko' ? nikoSettings : []).map((item, idx) => (
           <div 
             key={idx} 
             className="group flex flex-col md:flex-row md:items-center justify-between p-6 rounded-[2rem] hover:bg-purple-50/50 transition-all border border-transparent hover:border-purple-100"
@@ -61,12 +68,36 @@ const Settings = () => {
                  defaultValue={item.value}
                  className="w-full bg-gray-50 border border-gray-50 rounded-2xl px-6 py-3 text-sm font-black text-center text-gray-700 focus:outline-none focus:ring-4 focus:ring-primary-purple/10 focus:bg-white transition-all shadow-inner" 
                />
-               <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span className="material-symbols-outlined text-gray-300 text-sm">edit</span>
-               </div>
             </div>
           </div>
         ))}
+
+        {activeTab === 'niko' && (
+          <div className="mt-10 p-6 border-t border-gray-100 space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-800 uppercase tracking-widest text-xs">Quản lý quà tặng</h3>
+              <button className="bg-primary-purple text-white px-6 py-2 rounded-xl font-bold text-xs flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">add</span>Thêm quà tặng
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {['Voucher Coffee 50k', 'Sổ tay AHV Work', 'Áo thun AHV Limited', 'Voucher Buffet 500k'].map((gift, idx) => (
+                <div key={idx} className="flex items-center justify-between bg-gray-50 p-4 rounded-2xl border border-gray-100 hover:border-primary-purple transition-all group">
+                   <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
+                         <span className="material-symbols-outlined text-gray-300">image</span>
+                      </div>
+                      <span className="text-[13px] font-bold text-gray-700">{gift}</span>
+                   </div>
+                   <div className="flex gap-2">
+                      <button className="text-gray-400 hover:text-primary-purple"><span className="material-symbols-outlined text-[18px]">edit</span></button>
+                      <button className="text-gray-400 hover:text-red-500"><span className="material-symbols-outlined text-[18px]">delete</span></button>
+                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end gap-4">

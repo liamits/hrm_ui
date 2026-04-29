@@ -1,0 +1,48 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  DOCKER_IMAGE_NAME: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+
+# Build the application
+build_app:
+  stage: build
+  image: node:20-alpine
+  script:
+    - npm install
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
+  only:
+    - main
+    - merge_requests
+
+# Lint check
+lint_app:
+  stage: test
+  image: node:20-alpine
+  script:
+    - npm install
+    - npm run lint
+  only:
+    - main
+    - merge_requests
+
+# Build and push Docker image
+docker_build:
+  stage: deploy
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $DOCKER_IMAGE_NAME .
+    - docker push $DOCKER_IMAGE_NAME
+  only:
+    - main
+  when: manual # Set to manual to prevent accidental costs/deployments

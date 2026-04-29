@@ -13,6 +13,9 @@ import Evaluation from './pages/Evaluation';
 import Assets from './pages/Assets';
 import Chat from './pages/Chat';
 import Settings from './pages/Settings';
+import Profile from './pages/Profile';
+import LeaveManagement from './pages/LeaveManagement';
+import Holidays from './pages/Holidays';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -21,28 +24,26 @@ function App() {
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard />;
-      case 'nhan-su':
+      case 'employees':
         return <Staff />;
-      case 'corporate_fare':
+      case 'departments':
         return <Departments />;
-      case 'schedule':
+      case 'attendance':
         return <Attendance />;
-      case 'mood':
+      case 'leave':
+        return <LeaveManagement />;
+      case 'holidays':
+        return <Holidays />;
+      case 'niko':
         return <Niko />;
-      case 'event_busy':
-        return <LeaveTypes />;
-      case 'target':
+      case 'contracts':
+        return <LeaveTypes />; // Placeholder
+      case 'okrs':
         return <Okrs />;
-      case 'payments':
+      case 'salary':
         return <Salary />;
-      case 'task_alt':
-        return <Shifts />;
-      case 'security_update_good':
-        return <Evaluation />;
-      case 'inventory_2':
-        return <Assets />;
-      case 'chat':
-        return <Chat />;
+      case 'personal':
+        return <Profile />;
       case 'settings':
         return <Settings />;
       default:

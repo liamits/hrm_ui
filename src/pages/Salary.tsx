@@ -1,111 +1,189 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Workbook } from '@fortune-sheet/react';
+import * as XLSX from 'xlsx';
+import '@fortune-sheet/react/dist/index.css';
+
+const HEADERS = [
+  "STT", "HỌ TÊN", "STK", "NGÂN HÀNG", "SỐ NGÀY CÔNG", "NGHỈ KL", "CẤP ĐỘ NV", "CB", 
+  "P1", "P2", "P3", "BONUS", "QUỸ SINH HOẠT", "QUỸ CÔNG ĐOÀN", "BH", 
+  "THỰC LĨNH", "CHUYỂN KHOẢN", "TIỀN MẶT", "CÒN LẠI"
+];
+
+// Dữ liệu thô, để trống các cột cần tính toán
+const RAW_DATA = [
+  [1, "Chu Văn Tú", "VPB", "19034567890", 23, 0, "IT-Senior", 12000000, 8400000, 1200000, 2400000, 0, 50000, 200000, 345610, "", 10000000, "", 0],
+  [2, "Nguyễn Thị Vân Loan", "Vietinbank", "001100456123", 22.5, 0, "IT-Senior", 12000000, 8400000, 900000, 2400000, 0, 50000, 200000, 345610, "", 10000000, "", 0],
+  [3, "Phạm Văn Hải", "Vietcombank", "150012345678", 21.34, 0, "IT-Senior", 12000000, 8400000, 1200000, 2400000, 0, 50000, 200000, 345610, "", 10000000, "", 0],
+  [4, "Ngô Thị Bích Nhi", "Vietinbank", "123456789", 26, 0, "IT-Senior", 12000000, 8400000, 2400000, 2400000, 0, 50000, 200000, 345610, "", 10000000, "", 0],
+  [5, "Trần Thị Phương", "Vietinbank", "987654321", 20.87, 0, "IT-Senior", 12000000, 8400000, 2400000, 2400000, 0, 50000, 200000, 345610, "", 10000000, "", 0],
+];
 
 const Salary = () => {
-  const salaryData = [
-    { stt: 1, id: 'BONUS', name: 'Thưởng hiệu suất', taxable: 'Có', desc: 'Thưởng tháng/quý.', status: 'Không hoạt động', date: '11/02/2026' },
-    { stt: 2, id: 'OT_SALARY', name: 'Lương tăng ca', taxable: 'Có', desc: 'Phần vượt mức lương ngày thường thường được miễn thuế.', status: 'Hoạt động', date: '11/02/2026' },
-    { stt: 3, id: 'PHONE_ALLOW', name: 'Phụ cấp điện thoại', taxable: 'Không', desc: 'Khoản khoán chi phí công việc.', status: 'Hoạt động', date: '11/02/2026' },
-    { stt: 4, id: 'LUNCH_ALLOW', name: 'Phụ cấp ăn trưa', taxable: 'Không', desc: 'Thưởng được miễn thuế nếu dưới hạn mức.', status: 'Hoạt động', date: '11/02/2026' },
-    { stt: 5, id: 'BASE_SALARY', name: 'Lương cơ bản', taxable: 'Có', desc: 'Lương chính thức theo hợp đồng.', status: 'Hoạt động', date: '11/02/2026' },
-  ];
+  const [data, setData] = useState<any[]>([]);
+
+  useEffect(() => {
+    const celldata: any[] = [];
+    
+    // Đổ Headers
+    HEADERS.forEach((header, colIndex) => {
+      celldata.push({
+        r: 0, c: colIndex, 
+        v: { v: header, m: header, bl: 1, bg: "#f1f5f9", ht: 1, vt: 1 }
+      });
+    });
+
+    // Đổ Dữ liệu
+    RAW_DATA.forEach((row, rowIndex) => {
+      row.forEach((value, colIndex) => {
+        if (value === "") return; 
+
+        const cellInfo: any = { r: rowIndex + 1, c: colIndex, v: {} };
+        
+        if (typeof value === 'number') {
+          cellInfo.v = { 
+            v: value, 
+            m: value.toString(), 
+            ct: { fa: "General", t: "n" } 
+          };
+        } else {
+          cellInfo.v = { v: value, m: value.toString() };
+        }
+
+        if (colIndex === 4) { cellInfo.v.fc = "#16a34a"; cellInfo.v.bl = 1; cellInfo.v.ht = 1; }
+        if (colIndex === 6) { cellInfo.v.fc = "#3b82f6"; cellInfo.v.ht = 1; }
+        
+        celldata.push(cellInfo);
+      });
+    });
+
+    setData([
+      {
+        name: "Bảng lương chi tiết",
+        status: 1,
+        celldata,
+        config: {
+          columnlen: {
+            "0": 50, "1": 200, "2": 100, "3": 140, "4": 110, "5": 80, "6": 120,
+            "7": 120, "8": 100, "9": 100, "10": 100, "11": 100, "12": 120,
+            "13": 120, "14": 100, "15": 140, "16": 140, "17": 120, "18": 100
+          }
+        }
+      }
+    ]);
+  }, []);
+
+  const handleExportExcel = () => {
+    if (data.length === 0) {
+      alert("Chưa có dữ liệu để xuất!");
+      return;
+    }
+
+    // Lấy dữ liệu lưới 2 chiều thực tế từ sheet đầu tiên
+    const sheet = data[0];
+    if (!sheet.data) {
+      alert("Đang tải dữ liệu, vui lòng thử lại sau!");
+      return;
+    }
+
+    const exportData = sheet.data.map((row: any[]) => {
+      return row.map((cell: any) => {
+        if (!cell) return "";
+        // Ưu tiên lấy giá trị tính toán (v) nếu có, nếu không lấy giá trị chuỗi (m)
+        if (cell.v !== undefined && cell.v !== null) return cell.v;
+        if (cell.m !== undefined && cell.m !== null) return cell.m;
+        return "";
+      });
+    });
+
+    // Tạo file Excel
+    const ws = XLSX.utils.aoa_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "BangLuong");
+    XLSX.writeFile(wb, "BangLuong_HRM.xlsx");
+  };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-700">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-2 text-sm font-black text-primary-purple bg-white px-5 py-3 rounded-2xl shadow-xl shadow-purple-100 border border-purple-50">
-           <span className="material-symbols-outlined text-[20px] bg-gradient-purple text-transparent bg-clip-text">payments</span>
-           <span className="text-gray-200 font-normal">/</span>
-           <span className="tracking-tight uppercase">Danh sách loại thu nhập</span>
+    <div className="h-[calc(100vh-100px)] -m-6 flex flex-col bg-gray-50 overflow-hidden relative">
+      
+      {/* 3 Thẻ Thống Kê Nổi Bật */}
+      <div className="grid grid-cols-3 gap-6 px-6 pt-6 pb-4 shrink-0">
+        
+        {/* Card 1: Nhân Sự */}
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg shadow-blue-500/30 relative overflow-hidden group cursor-default">
+          <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-110 duration-500"></div>
+          <div className="flex justify-between items-start relative z-10">
+            <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-sm">
+              <span className="material-symbols-outlined text-white">groups</span>
+            </div>
+            <span className="text-blue-100 font-medium">0</span>
+          </div>
+          <div className="mt-5 relative z-10">
+            <h3 className="text-blue-100 text-xs font-bold tracking-wider mb-1">NHÂN SỰ</h3>
+            <p className="text-4xl font-extrabold">15</p>
+          </div>
         </div>
-        <button className="bg-gradient-purple text-white font-black px-8 py-3.5 rounded-2xl hover:opacity-90 transition-all flex items-center gap-2 shadow-2xl shadow-purple-200 active:scale-95">
-          <span className="material-symbols-outlined text-[22px]">add_circle</span>
-          Thêm loại thu nhập
-        </button>
+
+        {/* Card 2: Lương Trung Bình */}
+        <div className="bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/30 relative overflow-hidden group cursor-default">
+          <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-110 duration-500"></div>
+          <div className="flex justify-between items-start relative z-10">
+            <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-sm">
+              <span className="material-symbols-outlined text-white">trending_up</span>
+            </div>
+            <div className="bg-white/20 px-2 py-1 rounded-lg text-xs font-bold backdrop-blur-sm flex items-center gap-1">
+              +2.1% <span className="material-symbols-outlined text-[14px]">arrow_upward</span>
+            </div>
+          </div>
+          <div className="mt-5 relative z-10">
+            <h3 className="text-emerald-50 text-xs font-bold tracking-wider mb-1">LƯƠNG TRUNG BÌNH</h3>
+            <p className="text-4xl font-extrabold">23.1M</p>
+          </div>
+        </div>
+
+        {/* Card 3: Lương Cao Nhất */}
+        <div className="bg-gradient-to-br from-rose-400 to-red-500 rounded-2xl p-5 text-white shadow-lg shadow-rose-500/30 relative overflow-hidden group cursor-default">
+          <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-110 duration-500"></div>
+          <div className="flex justify-between items-start relative z-10">
+            <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-sm">
+              <span className="material-symbols-outlined text-white">workspace_premium</span>
+            </div>
+          </div>
+          <div className="mt-5 relative z-10">
+            <h3 className="text-rose-100 text-xs font-bold tracking-wider mb-1">LƯƠNG CAO NHẤT</h3>
+            <p className="text-4xl font-extrabold">32.9M</p>
+          </div>
+        </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/50 flex flex-wrap gap-6 items-end relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-purple opacity-30"></div>
-        <div className="flex-1 min-w-[200px] space-y-2">
-           <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 ml-1">Mã loại thu nhập</label>
-           <input type="text" placeholder="Nhập mã loại thu nhập để tìm kiếm" className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-purple/20 focus:bg-white transition-all" />
+      {/* Thanh công cụ tùy chỉnh */}
+      <div className="bg-white border-y border-gray-200 px-6 py-2 flex items-center justify-between shrink-0 z-10">
+        <div className="flex items-center gap-3 text-sm">
+          <span className="material-symbols-outlined text-blue-600 text-[20px]">info</span>
+          <p className="text-gray-600">
+            <strong className="text-gray-800">Mẹo định dạng số:</strong> Bôi đen cột &gt; Click nút <strong>"123" (Automatic)</strong> trên Toolbar &gt; Chọn kiểu (Tiền tệ/Số).
+          </p>
         </div>
-        <div className="flex-1 min-w-[200px] space-y-2">
-           <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 ml-1">Tên loại thu nhập</label>
-           <input type="text" placeholder="Nhập tên loại thu nhập để tìm kiếm" className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-purple/20 focus:bg-white transition-all" />
+        <div className="flex gap-2">
+          <button 
+            onClick={handleExportExcel}
+            className="px-4 py-1.5 bg-green-600 text-white font-bold text-xs rounded shadow-sm hover:bg-green-700 transition-colors flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-[16px]">download</span>
+            Xuất file Excel (.xlsx)
+          </button>
         </div>
-        <div className="flex-1 min-w-[200px] space-y-2">
-           <label className="text-[11px] font-black uppercase tracking-wider text-gray-400 ml-1">Trạng thái</label>
-           <select className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-500 outline-none focus:ring-2 focus:ring-primary-purple/20 focus:bg-white transition-all">
-              <option>Chọn trạng thái</option>
-           </select>
-        </div>
-        <button className="px-8 py-3.5 border-2 border-red-50 text-red-500 font-black rounded-xl text-sm flex items-center gap-2 hover:bg-red-50 transition-all active:scale-95 shadow-sm">
-           <span className="material-symbols-outlined text-[20px]">refresh</span>
-           Làm mới
-        </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/50 overflow-hidden relative">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-gray-50/30 text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] border-b border-gray-100">
-                <th className="px-8 py-6">STT</th>
-                <th className="px-6 py-6 border-l border-gray-50">Mã loại thu nhập</th>
-                <th className="px-6 py-6 border-l border-gray-50">Tên loại thu nhập</th>
-                <th className="px-6 py-6 border-l border-gray-50">Thu nhập đóng thuế</th>
-                <th className="px-6 py-6 border-l border-gray-50">Mô tả</th>
-                <th className="px-6 py-6 border-l border-gray-50">Trạng thái</th>
-                <th className="px-6 py-6 border-l border-gray-50">Ngày tạo</th>
-                <th className="px-8 py-6 text-center border-l border-gray-50">Hành động</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50/50">
-              {salaryData.map((item) => (
-                <tr key={item.stt} className="hover:bg-primary-purple/[0.02] transition-colors group">
-                  <td className="px-8 py-5 text-[12px] font-bold text-gray-300">{item.stt}</td>
-                  <td className="px-6 py-5 border-l border-gray-50/10">
-                    <span className="text-[13px] font-bold text-gray-700">{item.id}</span>
-                  </td>
-                  <td className="px-6 py-5 border-l border-gray-50/10">
-                    <span className="text-[13px] font-bold text-gray-700">{item.name}</span>
-                  </td>
-                  <td className="px-6 py-5 border-l border-gray-50/10">
-                    <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${item.taxable === 'Có' ? 'bg-orange-50 text-orange-500 border-orange-100' : 'bg-teal-50 text-teal-500 border-teal-100'}`}>
-                      {item.taxable}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 border-l border-gray-50/10 text-sm text-gray-400 font-medium max-w-[250px] truncate" title={item.desc}>{item.desc}</td>
-                  <td className="px-6 py-5 border-l border-gray-50/10">
-                    <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${item.status === 'Hoạt động' ? 'bg-green-50 text-green-500 border-green-100' : 'bg-red-50 text-red-500 border-red-100'}`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 border-l border-gray-50/10 text-[12px] font-bold text-gray-400">{item.date}</td>
-                  <td className="px-8 py-5 border-l border-gray-50/10">
-                    <div className="flex items-center justify-center gap-3">
-                       <button className="w-9 h-9 flex items-center justify-center bg-yellow-50 text-yellow-600 rounded-xl hover:bg-yellow-400 hover:text-white transition-all shadow-sm">
-                          <span className="material-symbols-outlined text-[18px]">edit</span>
-                       </button>
-                       <button className="w-9 h-9 flex items-center justify-center bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm">
-                          <span className="material-symbols-outlined text-[18px]">delete</span>
-                       </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="p-8 bg-gray-50/30 flex justify-between items-center text-[11px] font-black text-gray-300 px-8 uppercase tracking-widest">
-           <span>Hiển thị 1 - 5 trong 55 bản ghi</span>
-           <div className="flex gap-2">
-              <button className="w-10 h-10 rounded-xl flex items-center justify-center bg-white border border-gray-100 hover:text-primary-purple transition-colors shadow-sm"><span className="material-symbols-outlined text-sm">chevron_left</span></button>
-              <button className="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-purple text-white shadow-xl shadow-purple-200">1</button>
-              <button className="w-10 h-10 rounded-xl flex items-center justify-center bg-white border border-gray-100 hover:text-primary-purple transition-colors shadow-sm"><span className="material-symbols-outlined text-sm">chevron_right</span></button>
-           </div>
+      <div className="flex-1 relative min-h-0">
+        <div className="absolute inset-0">
+          {data.length > 0 && (
+            <Workbook 
+              data={data} 
+              onChange={setData} 
+              showToolbar={true} 
+              showFormulaBar={true} 
+            />
+          )}
         </div>
       </div>
     </div>
@@ -113,3 +191,4 @@ const Salary = () => {
 };
 
 export default Salary;
+
